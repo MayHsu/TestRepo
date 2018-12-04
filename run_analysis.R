@@ -1,9 +1,12 @@
+install.packages("dplyr")
+install.packages("sqldf")
+
 library(dplyr)
+library(sqldf)
 
 ##set working directory
-##path <- getwd()
-##dir.create(paste(path,"/GettingAndCleaningDataProject",sep=""))
-##setwd("GettingandCleaningDataProject")
+dir.create("E://User//Documents//Getting_Cleaning_Data_Project//GettingAndCleaningDataProject")
+setwd("E://User//Documents//Getting_Cleaning_Data_Project//GettingAndCleaningDataProject")
 
 ##declare url and zip file name
 url <- "https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip"
@@ -11,62 +14,66 @@ zipFile <- "UCI HAR Dataset.zip"
 
 ##download file
 if(!file.exists(zipFile)){
-       ##download.file(url,zipFile,method = "curl")
+       download.file(url,zipFile,method = "curl")
 }
 
 ##unzip file
 dataPath <- "UCI HAR Dataset"
 if(!file.exists(dataPath)){
-       ##unzip(zipFile)
+       unzip(zipFile)
 }
 
 ##read training data
 trainingSubjects <- read.table(file.path(dataPath, "train", "subject_train.txt"))
-trainingValues <- read.table(file.path(dataPath, "train", "X_train.txt"))
-trainingActivity <- read.table(file.path(dataPath, "train", "y_train.txt"))
+##7352 obs.of 1 variable
+trainingX <- read.table(file.path(dataPath, "train", "X_train.txt"))
+##7352 obs.of 561 variable
+trainingY <- read.table(file.path(dataPath, "train", "y_train.txt"))
+##7352 obs.of 1 variable
 
 ##read test data
 testSubjects <- read.table(file.path(dataPath, "test", "subject_test.txt"))
-testValues <- read.table(file.path(dataPath, "test", "X_test.txt"))
-testActivity <- read.table(file.path(dataPath, "test", "y_test.txt"))
+##2947 obs.of 1 variable
+testX <- read.table(file.path(dataPath, "test", "X_test.txt"))
+##2947 obs.of 561 variable
+testY <- read.table(file.path(dataPath, "test", "y_test.txt"))
+##2947 obs.of 1 variable
 
 ##combine files
-trainingSet <- cbind(trainingSubjects,trainingValues,trainingActivity)
-testSet <- cbind(testSubjects,testValues,testActivity)
+trainingSet <- cbind(trainingSubjects,trainingX,trainingY)
+testSet <- cbind(testSubjects,testX,testY)
 allActivity <- rbind(trainingSet,testSet)
 
-##clear memory
-rm(trainingActivity,trainingSet,trainingSubjects,trainingValues,testActivity,testSet,testValues,testSubjects)
-
 ##reading activity file
-activities <- read.table(file.path(dataPath, "activity_labels.txt"))
-colnames(activities) <- c("activityId", "activityLabel")
+labels <- read.table(file.path(dataPath, "activity_labels.txt"),header = FALSE)
+colnames(labels) <- c("Id", "Label")
 
 ##reading values file
-features <- read.table(file.path(dataPath, "features.txt"), as.is = TRUE)
+features <- read.table(file.path(dataPath, "features.txt"),header = FALSE,stringsAsFactors = FALSE)
 
 ##putting column name into combined file
-colnames(allActivity) <- c("subject", features[, 2], "activity")
+colnames(allActivity) <- c("subject", features[, 2], "label")
 
 ##preparing to remove unnecessary columns
-columnsToKeep <- grepl("subject|activity|mean|std", colnames(allActivity))
+columnsToKeep <- grepl("subject|label|mean|std", colnames(allActivity))
 allActivity <- allActivity[, columnsToKeep]
 
 ##updating activity code to description
-allActivity$activity <- factor(allActivity$activity, levels = activities[,1], labels = activities[,2])
+allActivityLabel <- sqldf("select allActivity.*, labels.Label as labelDesc 
+          from allActivity
+             inner join labels
+             on allActivity.label = labels.Id")
 
 ##tidying column names
-allActivityCols <- names(allActivity)
+allActivityCols <- names(allActivityLabel)
 allActivityCols <- gsub("[\\(\\)-]","",allActivityCols)
-colnames(allActivity) <- allActivityCols
+colnames(allActivityLabel) <- allActivityCols
 
 ##calculate mean value
-columnsToCalculate <- grepl("mean|std", colnames(allActivity))
-allActivityMeans <- allActivity %>% 
-        group_by(subject, activity) %>%
+columnsToCalculate <- grepl("mean|std", colnames(allActivityLabel))
+allActivityMeans <- allActivityLabel %>% 
+        group_by(subject, label,labelDesc) %>%
         summarise_all(funs(mean))
-        
-        ##summarise_at(mean(columnsToCalculate))
 
 ##writing tidy file
 write.table(allActivityMeans, "tidy_data.txt", row.names = FALSE)
