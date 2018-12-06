@@ -4,9 +4,9 @@ This code book summarizes the resulting data fields in tidy.txt.
 
 <H1> Identifier </H1>
 
-subject - The ID of the test subject
-activity - The type of activity performed when the corresponding measurements were taken
-Measurements - The type of taken measurements
+*subject - The ID of the test subject
+*activity - The type of activity performed when the corresponding measurements were taken
+*Measurements - The type of taken measurements
 
 <H1> Activity Labels </H1>
 WALKING : subject was walking during the test</br>
